@@ -4,35 +4,11 @@ import (
 	"log"
 	"fmt"
 	"database/sql"
-	
-	"github.com/go-sql-driver/mysql"
 )
 
-func getRowsFromTable(db *sql.DB, table string) (*sql.Rows, error) {
-
-	rows, err := db.Query("SELECT * FROM " + table);
-
-	if err != nil {
-		return nil, err
-	}
-
-	return rows, nil
-}
-
-func deletePosition(db *sql.DB, userID string) error {
-	delQuery := fmt.Sprintf("DELETE FROM coords WHERE userID = \"%s\";", userID)
-
-	result, err := db.Exec(delQuery)
-	if err != nil { return err }
-	count, _ := result.RowsAffected()
-	if count != 1 { log.Println("WARNING : No rows to delete") }
-
-	return nil
-}
-
-func extractPositions(rows *sql.Rows) ([]Position, int) {
-	var positions []Position
-	var pos Position
+func extractPositions(rows *sql.Rows) ([]PositionDB, int) {
+	var positions []PositionDB
+	var pos PositionDB
 	
 	count := 0 // rows counter
 	for rows.Next() {
@@ -43,6 +19,43 @@ func extractPositions(rows *sql.Rows) ([]Position, int) {
 
 	return positions, count
 }
+
+func getRowsFromTable(db *sql.DB, tableName string) ([]PositionDB, error) {
+
+	rows, err := db.Query("SELECT * FROM " + tableName);
+
+	if err != nil {
+		return nil, err
+	}
+
+	positions, count := extractPositions(rows)
+	if count == 0 { log.Printf("WARNING : No rows in table '%s'\n", tableName) }
+
+	return positions, nil
+}
+
+func getUserPosition(db *sql.DB, userName string, latest bool) ([]PositionDB, error) {
+
+	var query string
+
+	if latest { // only get the last position
+		query = fmt.Sprintf("SELECT * FROM coords WHERE userID = '%s' ORDER BY time LIMIT 1;", userName)
+	} else { // get all positions
+		query = fmt.Sprintf("SELECT * FROM coords WHERE userID = '%s'", userName)
+	}
+
+	var rows *sql.Rows
+	var err error
+
+	rows, err = db.Query(query)
+	if err != nil { return nil, err }
+
+	positions, count := extractPositions(rows)
+	if count == 0 { log.Printf("WARNING : No postion found for user '%s'\n", userName) }
+
+	return positions, nil
+}
+
 
 func pushPositionToDB(db * sql.DB, userID string, time string, latitude float64, longitude float64) error {
 
@@ -59,4 +72,13 @@ func pushPositionToDB(db * sql.DB, userID string, time string, latitude float64,
 	return nil
 }
 
+func deletePosition(db *sql.DB, userID string) error {
+	delQuery := fmt.Sprintf("DELETE FROM coords WHERE userID = \"%s\";", userID)
 
+	result, err := db.Exec(delQuery)
+	if err != nil { return err }
+	count, _ := result.RowsAffected()
+	if count != 1 { log.Println("WARNING : No rows to delete") }
+
+	return nil
+}

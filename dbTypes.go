@@ -8,8 +8,16 @@ type datetime struct {
 	minute 	   int8
 }
 
-type Position struct {
+type PositionRequest struct {
         UserID     string  `json:"userID"`
+        Latitude   float64 `json:"latitude"`
+        Longitude  float64 `json:"longitude"`
+}
+
+
+type PositionDB struct {
+        UserID     string  `json:"userID"`
+	Time       string  `json:"time"` // format "YY-MM-DD HH:MM:SS"
         Latitude   float64 `json:"latitude"`
         Longitude  float64 `json:"longitude"`
 

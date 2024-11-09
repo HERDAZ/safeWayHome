@@ -3,8 +3,7 @@ package main
 import (
 	"log"
 	"fmt"
-	"database/sql"
-	"github.com/go-sql-driver/mysql"
+	"time"
 )
 
 func main() {
@@ -15,22 +14,27 @@ func main() {
 	fmt.Println("Connected")
 
 	// create fake user
-	var pos Position
-	pos.userID = "ABCD"
-	pos.time = "2022-02-16 15:03:12"
-	pos.latitude = 12.8967081
-	pos.longitude = 24.5683885
+	var pos PositionDB
+	pos.UserID = "DEF"
+	pos.Time = time.Now().Format(time.DateTime)
+	pos.Latitude = 12.8967081
+	pos.Longitude = 24.5683885
 
 	//push data to db
-	err = pushPositionToDB(db, pos.userID, pos.time, pos.latitude, pos.longitude)
-	if err != nil {log.Printf("Could not push to DB : ", err)}
+	//err = pushPositionToDB(db, pos.UserID, pos.Time, pos.Latitude, pos.Longitude)
+	//if err != nil {log.Printf("Could not push to DB : ", err)}
 
 	//retrive data from db
-	var rows *sql.Rows
+	var positions []PositionDB
 
-	rows, err = getRowsFromTable(db,"coords")
-	if err != nil {log.Fatal("Could not retrieve table from DB : ", err)}
+	positions, err = getUserPosition(db,"ABCD",true)
+	if err != nil {log.Fatal("Could not retrieve position from DB : ", err)}
 
-	positions, _ := extractPositions(rows)
+	fmt.Printf("%v\n",positions)
+
+	positions, err = getRowsFromTable(db, "coords")
+	if err != nil { log.Fatal("Could not retrieve table from DB : ", err) }
+
 	fmt.Printf("%v",positions)
 }
+

@@ -37,7 +37,7 @@ func createposition(c *gin.Context) {
 
 
 
-	var newPosition Position
+	var newPosition PositionRequest
 	if err := c.BindJSON(&newPosition); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Failed to create new position"})
 		fmt.Println(err)
@@ -53,12 +53,9 @@ func createposition(c *gin.Context) {
 
 func getposition(c *gin.Context) {
 
-	rows, err := getRowsFromTable(db, "coords")
+	positions, err := getRowsFromTable(db, "coords")
 	if err != nil {log.Fatal("Could not retrieve data from table : ", err) }
 
-	var positions []Position
-
-	positions, _ = extractPositions(rows)
 	c.IndentedJSON(http.StatusCreated, positions[0])
 	
 
