@@ -24,8 +24,9 @@ func main() {
 	router := gin.Default()
 
 	router.GET("/position", getposition)
+	router.GET("/home", getHomeposition)
 	router.POST("/position", createposition)
-
+	
 	router.Run("87.106.79.94:8447")
 }
 
@@ -53,10 +54,18 @@ func createposition(c *gin.Context) {
 
 func getposition(c *gin.Context) {
 
-	positions, err := getRowsFromTable(db, "coords")
+	positions, err := getUsersPosition(db, "TEUB", false) // regarde la docu, la syntaxe à (oui encore) changée
 	if err != nil {log.Fatal("Could not retrieve data from table : ", err) }
 
 	c.IndentedJSON(http.StatusCreated, positions[0])
 	
 
+}
+
+func getHomeposition(c *gin.Context) {
+
+	homePosition, err := getUsersHome(db, "ABCD")
+	if err != nil { log.Println("WARNING : Could not retrieve home position for user 'ABCD'") }
+
+	c.IndentedJSON(http.StatusCreated, homePosition)
 }

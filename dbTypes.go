@@ -24,6 +24,12 @@ type PositionDB struct {
 
 }
 
+type Home struct {
+ 	Time 	    string `json:"time"`
+ 	UserID 	    string `json:"userID"`
+ 	Latitude    float64 `json:"latitude"`
+ 	Longitude   float64 `json:"longitude"`
+}
 
  type Relation struct {
  	UserID 	    string `json:"userID"`
