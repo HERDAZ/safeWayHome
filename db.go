@@ -8,10 +8,10 @@ import (
 )
 
 
-func extractHomes(rows *sql.Rows) ([]Home, int) {
+func extractHomes(rows *sql.Rows) ([]HomeDB, int) {
 
-	var homes []Home
-	var home Home
+	var homes []HomeDB
+	var home HomeDB
 	
 	count := 0 // rows counter
 	for rows.Next() {
@@ -59,13 +59,19 @@ func getUsersRows(db *sql.DB, userName string, tableName string, latest bool) (*
 }
 
 
-func getUsersPosition(db *sql.DB, userName string, latest bool) ([]PositionDB, error) {
+func getUsersPosition(db *sql.DB, apikey string, userID string, latest bool) ([]PositionDB, error) {
 
-	if len(userName) != 4 { 
+	if len(apikey) != 32 { 
 
-		err := fmt.Sprintf("Invalid User '%s'")
+		err := fmt.Sprintf("Invalid API key '%s'", apikey)
 		log.Printf("WARNING : %s", err)
 		return []PositionDB{}, errors.New(err)
+	}
+
+	userName, err := getUserFromAPIkey(db, apikey)
+	if err != nil { 
+		errorMsg := fmt.Sprintf("ERROR : Couldn't get userID from API key '%s' : %v\n", err)
+		return []PositionDB{}, errors.New(errorMsg)
 	}
 
 	rows, err := getUsersRows(db, userName, "coords", latest)
@@ -77,28 +83,34 @@ func getUsersPosition(db *sql.DB, userName string, latest bool) ([]PositionDB, e
 	return positions, nil
 }
 
-func getUsersHome(db *sql.DB, userName string) (Home, error) {
+func getUsersHome(db *sql.DB, apikey string, userID string) (HomeDB, error) {
 
-	if len(userName) != 4 { 
+	if len(apikey) != 32 { 
 
-		err := fmt.Sprintf("Invalid User '%s'")
+		err := fmt.Sprintf("Invalid API key '%s'", apikey)
 		log.Printf("WARNING : %s", err)
-		return Home{}, errors.New(err)
+		return HomeDB{}, errors.New(err)
 	}
 
-	rows, err := getUsersRows(db, userName, "home", false)
+	_, err := getUserFromAPIkey(db, apikey) // TODO manage permisions
+	if err != nil { 
+		errorMsg := fmt.Sprintf("ERROR : Couldn't get userID from API key '%s' : %v\n", err)
+		return HomeDB{}, errors.New(errorMsg)
+	}
+
+	rows, err := getUsersRows(db, userID, "home", false)
 	if err != nil { log.Printf("WARNING : Problem getting position for user '%s' : ", err) }
 
 	homes, count := extractHomes(rows)
 
 	if count == 0 {
 
-		log.Printf("WARNING : No rows in table 'home' for user '%s''\n", userName)
-		return Home{}, nil
+		log.Printf("WARNING : No rows in table 'home' for user '%s''\n", userID)
+		return HomeDB{}, nil
 
 	} else if count > 1 {
 
-		log.Printf("WARNING : Too many homes found for user '%s' (%d)\n", userName, count)
+		log.Printf("WARNING : Too many homes found for user '%s' (%d)\n", userID, count)
 	}
 
 	return homes[0], nil
@@ -111,7 +123,6 @@ func pushHomeToDB(db *sql.DB, userID string, time string, latitude float64, long
 	err := deleteHome(db, userID)
 	if err != nil { log.Printf("WARNING : Can't delete home position for user '%s' %v\n", userID, err) }
 
-
 	query = "INSERT INTO home (userID, time, latitude, longitude) VALUES "
 	query += fmt.Sprintf("('%s','%s',%.7f,%.7f);", userID, time, latitude, longitude)
 
@@ -121,14 +132,21 @@ func pushHomeToDB(db *sql.DB, userID string, time string, latitude float64, long
 	return nil
 }
 
-func pushPositionToDB(db * sql.DB, userID string, time string, latitude float64, longitude float64) error {
+func pushPositionToDB(db * sql.DB, apikey string, time string, latitude float64, longitude float64) error {
 
 	var query string
 
-	query = "INSERT INTO coords (userID, time, latitude, longitude) VALUES " // static value
-	query += fmt.Sprintf("('%s','%s',%.7f,%.7f);", userID, time, latitude, longitude) // dynamic values (line is split for visibility)
+	userID, err := getUserFromAPIkey(db, apikey)
+	if err != nil {
+		log.Println("ERROR : Problem with APIkey to userID conversion :", err)
+		return nil
+	}
 
-	_, err := db.Exec(query)
+	query = "INSERT INTO coords (userID, time, latitude, longitude) VALUES " // static value
+	query += fmt.Sprintf("('%s','%s',%.7f,%.7f);", userID, time, latitude, longitude) // dynamic values
+
+	_, err = db.Exec(query)
+	//TODO add more tourough testing
 	if err != nil {
 		return err
 	}

@@ -9,7 +9,7 @@ type datetime struct {
 }
 
 type PositionRequest struct {
-        UserID     string  `json:"userID"`
+        APIkey     string  `json:"apikey"`
         Latitude   float64 `json:"latitude"`
         Longitude  float64 `json:"longitude"`
 }
@@ -20,13 +20,17 @@ type PositionDB struct {
 	Time       string  `json:"time"` // format "YY-MM-DD HH:MM:SS"
         Latitude   float64 `json:"latitude"`
         Longitude  float64 `json:"longitude"`
-
-
 }
 
-type Home struct {
- 	Time 	    string `json:"time"`
- 	UserID 	    string `json:"userID"`
+type HomeRequest struct {
+ 	APIkey 	    string  `json:"apikey"`
+ 	Latitude    float64 `json:"latitude"`
+ 	Longitude   float64 `json:"longitude"`
+}
+
+type HomeDB struct {
+ 	UserID 	    string  `json:"userID"`
+	Time	    string  `json:"userID"`
  	Latitude    float64 `json:"latitude"`
  	Longitude   float64 `json:"longitude"`
 }
@@ -45,6 +49,19 @@ type User struct {
 	PasswdHash   string `json:"passwdHash"`
 	UserID       string `json:"userID"`
 }
+
+type UserLogin struct {
+	UserName     string `json:"username"`
+	Password     string `json:"password"`
+}
+
+type UserSignup struct {
+	UserName     string `json:"username"`
+	PhoneNb      string `json:"phoneNb"`
+	Email 	     string `json:"email"`
+	Password     string `json:"password"`
+}
+
  type UserAlerts struct {
 	id 	     int     
  	UserID 	     string  `json:"userID"`
