@@ -14,9 +14,8 @@ type PositionRequest struct {
         Longitude  float64 `json:"longitude"`
 }
 
-
 type PositionDB struct {
-        UserID     string  `json:"userID"`
+        UserID     string  `json:"userid"`
 	Time       string  `json:"time"` // format "YY-MM-DD HH:MM:SS"
         Latitude   float64 `json:"latitude"`
         Longitude  float64 `json:"longitude"`
@@ -29,15 +28,15 @@ type HomeRequest struct {
 }
 
 type HomeDB struct {
- 	UserID 	    string  `json:"userID"`
-	Time	    string  `json:"userID"`
+ 	UserID 	    string  `json:"userid"`
+	Time	    string  `json:"time"`
  	Latitude    float64 `json:"latitude"`
  	Longitude   float64 `json:"longitude"`
 }
 
  type Relation struct {
- 	UserID 	    string `json:"userID"`
-	FriendID    string `json:"friendID"`
+ 	UserID 	    string `json:"userid"`
+	FriendID    string `json:"friendid"`
 	Permissions byte   `json:"permissions"`
 	AddDate     string `json:"addDate"`
 }
@@ -47,12 +46,17 @@ type User struct {
 	PhoneNb      string `json:"phoneNb"`
 	Email 	     string `json:"email"`
 	PasswdHash   string `json:"passwdHash"`
-	UserID       string `json:"userID"`
+	UserID       string `json:"userid"`
 }
 
 type UserLogin struct {
 	UserName     string `json:"username"`
 	Password     string `json:"password"`
+}
+
+type LoginResponse struct {
+        Apikey     string `json:"apikey"`
+        Userid     string `json:"userid"`
 }
 
 type UserSignup struct {
@@ -62,14 +66,28 @@ type UserSignup struct {
 	Password     string `json:"password"`
 }
 
+type SignupResponse struct {
+	UserID	     string `json:"userid"`
+	//TODO add APIkey maybe
+}
+
  type UserAlerts struct {
 	id 	     int     
- 	UserID 	     string  `json:"userID"`
+ 	UserID 	     string  `json:"userid"`
 	Time 	     float32 `json:"time"`
 	AlertType    string  `json:"alertType"`
  }
 
  type AlertNotif struct {
- 	alertID	  int 	 
-	sentTo	  string 
+ 	alertID	     int 	 
+	sentTo	     string 
+ }
+
+ type Permissions struct {
+ 	seePosition  bool `json:"seeposition"`
+	sendMessage  bool `json:"sendmessage"`
+ }
+
+ type Error struct {
+ 	ErrorMsg    string `json:"error"`
  }

@@ -177,6 +177,8 @@ func authenticateUser(db *sql.DB, username string, password string) (string, str
 
 	APIkey, err := generateAPIkey(db,0)
 
+	updateAPIkey(db, userID, APIkey)
+
 	return APIkey, userID, err
 }
 
@@ -195,6 +197,8 @@ func updateAPIkey(db *sql.DB, userID string, APIkey string) error {
 		errorMsg := fmt.Sprintln("WARNING : Multiple APIkeys updated for userID '%s' (%d)\n", userID, count)
 		return errors.New(errorMsg)
 	}
+
+	fmt.Println("Updated API key for userID", userID)
 
 	return nil
 }
@@ -227,18 +231,3 @@ func getUserFromAPIkey(db *sql.DB, APIkey string) (string, error) {
 	return userID, nil
 }
 
-//func main() {
-//	db, _ := connectToDB("dbProjInfo")
-//
-//	username := "test"
-//	password := "test"
-//
-//	APIkey, userID, err := authenticateUser(db, username, password)
-//	fmt.Println(APIkey, userID, err)
-//
-//	err = updateAPIkey(db, userID, APIkey)
-//	fmt.Println(err)
-//
-//	userID, err = getUserFromAPIkey(db, APIkey)
-//	fmt.Println(userID, err)
-//}

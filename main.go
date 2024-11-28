@@ -19,7 +19,7 @@ func main() {
 
 	router := gin.Default()
 
-	router.GET("/position", getposition)
+	router.GET("/position", getPosition)
 	router.GET("/home", getHomeposition)
 	router.GET("/login", login)
 
@@ -30,6 +30,11 @@ func main() {
 	router.Run("87.106.79.94:8447")
 }
 
+func makeErrMsg(err error) Error {
+	response := Error{ErrorMsg : err.Error()}
+	return response
+}
+
 func postPosition(c *gin.Context) {
 
 	now := time.Now().Add(time.Hour).Format(time.DateTime)
@@ -37,23 +42,32 @@ func postPosition(c *gin.Context) {
 	var newPosition PositionRequest
 
 	err := c.BindJSON(&newPosition)
-	fmt.Printf("%v\n", newPosition) //TODO WTF does latitude stays 0 ?!
 	
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Failed to create new position"})
-		fmt.Println(err)
+
+		log.Println("ERROR : Couldn't bind newPosition from JSON :", err)
+		response := makeErrMsg(err)
+		c.IndentedJSON(http.StatusBadRequest, response)
 		return
 	}
 
 	err = pushPositionToDB(db, newPosition.APIkey, now, newPosition.Latitude, newPosition.Longitude)
-        if err != nil { log.Println("Could not push data to database : ", err) }
+        if err != nil {
 
+		response := makeErrMsg(err)
+		log.Println("postPosition :", err.Error())
+		c.IndentedJSON(http.StatusUnauthorized, response)
 
-	c.IndentedJSON(http.StatusCreated, newPosition)
+	} else {
+
+		c.IndentedJSON(http.StatusCreated, newPosition)
+	}
+
 }
 
-func getposition(c *gin.Context) {
+func getPosition(c *gin.Context) {
      
+	//TODO find why the fuck there is an error 500 that is not this one
 	apikey := c.GetHeader("apikey")
 	userID := c.GetHeader("userID")
 
@@ -61,9 +75,13 @@ func getposition(c *gin.Context) {
         fmt.Println("userID :", userID)
 
 	positions, err := getUsersPosition(db, apikey, userID, false)
-	if err != nil { log.Println("Could not retrieve data from table : ", err) }
+	if err != nil {
+		log.Println("ERROR : Could not retrieve data from table : ", err)
+		response := makeErrMsg(err)
+		c.IndentedJSON(http.StatusInternalServerError, response)
+	} 
 
-	c.IndentedJSON(http.StatusCreated, positions[0]) //TODO fix error code 500
+	c.IndentedJSON(http.StatusCreated, positions[0])
 	
 
 }
@@ -77,7 +95,13 @@ func getHomeposition(c *gin.Context) {
         fmt.Println("userID :", userID)
 
 	homePosition, err := getUsersHome(db, apikey, userID)
-	if err != nil { log.Println("WARNING : Could not retrieve home position for API key '%s'", apikey) }
+	if err != nil {
+
+		log.Printf("WARNING : Could not retrieve home position for API key '%s'\n", apikey)
+		response := makeErrMsg(err)
+		c.IndentedJSON(http.StatusCreated, response)
+		return
+	}
 
 	c.IndentedJSON(http.StatusCreated, homePosition)
 }
@@ -93,10 +117,20 @@ func postHomeposition(c *gin.Context) {
         }
 
 	userID, err := getUserFromAPIkey(db, newHomePosition.APIkey)
-	if err != nil { fmt.Println("Couldn't get userID from API key :", err) }
+	if err != nil {
+		fmt.Println("Couldn't get userID from API key :", err)
+		response := makeErrMsg(err)
+		c.IndentedJSON(http.StatusBadRequest, response)
+		return
+	}
 
         err = pushHomeToDB(db, userID, now, newHomePosition.Latitude, newHomePosition.Longitude)
-        if err != nil { log.Println("Could not push data to database : ", err) }
+        if err != nil {
+		log.Println("Could not push data to database : ", err)
+		response := makeErrMsg(err)
+		c.IndentedJSON(http.StatusBadRequest, response)
+		return
+	}
 
         c.IndentedJSON(http.StatusCreated, newHomePosition)
 	
@@ -106,27 +140,25 @@ func signup(c *gin.Context) {
 
 	var user UserSignup
 	c.BindJSON(&user)
-
-	fmt.Println("user :", user)
+	//TODO : add err catch for bind
 
 	err := validateNewUser(db, user.UserName, user.Email, user.PhoneNb)
 
 	if err != nil {
-		response := fmt.Sprintf("Problem validating new user : %v\n", err)
+		response := makeErrMsg(err)
 		c.IndentedJSON(http.StatusBadRequest, response)
 		return
 	}
 		
 	userID, err := pushNewUserToDB(db, time.Now().Add(time.Hour).Format(time.DateTime), user.UserName, user.Email, user.PhoneNb, user.Password)
 
-	if err == nil {
-		response := fmt.Sprintf("New user '%s' with userID '%s' was created\n", user.UserName, userID)
-		c.IndentedJSON(http.StatusCreated, response)
-	} else {
-		response := fmt.Sprintf("Problem creating user with username '%s'\n", user.UserName, userID)
-		log.Printf(response)
+	if err != nil {
+		response := makeErrMsg(err)
 		c.IndentedJSON(http.StatusInternalServerError, response)
+		return
 	}
+
+	c.IndentedJSON(http.StatusCreated, SignupResponse{ UserID: userID })
 }
 
 func login(c *gin.Context) {
@@ -135,16 +167,14 @@ func login(c *gin.Context) {
 	password := c.GetHeader("password")
 
 	userKey, userID, err := authenticateUser(db, username, password)
-
-	if err == nil {
-
-		response := fmt.Sprintf("{'userKey' : '%s', 'userID' : '%s'}", userKey, userID)
-		c.IndentedJSON(http.StatusCreated, response)
-
+	
+	if err != nil {
+		response := makeErrMsg(err)
+		c.IndentedJSON(http.StatusUnauthorized, response)
 	} else {
 
-		response := fmt.Sprintf("{'error' : '%s'}", err)
-		c.IndentedJSON(http.StatusUnauthorized, response)
+		response := LoginResponse{Apikey: userKey, Userid : userID}
+		c.IndentedJSON(http.StatusCreated, response)
 	}
 
 }
