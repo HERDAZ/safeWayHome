@@ -88,6 +88,10 @@ type SignupResponse struct {
 	sendMessage  bool `json:"sendmessage"`
  }
 
+ type Apikey struct {
+ 	Apikey      string `json:"apikey"`
+}
+
  type Error struct {
  	ErrorMsg    string `json:"error"`
  }

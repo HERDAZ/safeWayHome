@@ -58,16 +58,7 @@ func getUsersRows(db *sql.DB, userName string, tableName string, latest bool) (*
 }
 
 
-func getUsersPosition(db *sql.DB, apikey string, userID string, latest bool) ([]PositionDB, error) {
-
-	if len(apikey) != 32 { 
-
-		err := fmt.Sprintf("Invalid API key '%s'", apikey)
-		log.Printf("WARNING : %s", err)
-		return []PositionDB{}, errors.New(err)
-	}
-
-	//TODO add permissions
+func getUsersPosition(db *sql.DB, userID string, latest bool) ([]PositionDB, error) {
 
 	rows, err := getUsersRows(db, userID, "coords", latest)
 	if err != nil { log.Printf("WARNING : Problem getting position for user '%s' : ", err) }
@@ -78,17 +69,14 @@ func getUsersPosition(db *sql.DB, apikey string, userID string, latest bool) ([]
 	return positions, nil
 }
 
-func getUsersHome(db *sql.DB, apikey string, userID string) (HomeDB, error) {
-
-	if len(apikey) != 32 { 
-
-		err := fmt.Sprintf("Invalid API key '%s'", apikey)
-		log.Printf("WARNING : %s", err)
-		return HomeDB{}, errors.New(err)
-	}
+func getUsersHome(db *sql.DB, userID string) (HomeDB, error) {
 
 	rows, err := getUsersRows(db, userID, "home", false)
-	if err != nil { log.Printf("WARNING : Problem getting position for user '%s' : ", err) }
+
+	if err != nil {
+		errorMsg := fmt.Sprintf("WARNING : Problem getting position for user '%s' : ", err)
+		return HomeDB{}, errors.New(errorMsg)
+	}
 
 	homes, count := extractHomes(rows)
 

@@ -91,7 +91,7 @@ func pushNewUserToDB(db *sql.DB, lastLogin string, username string, email string
 
 	err = pushUserToDB(db, userID, lastLogin, username, email, phoneNb, string(passwdHash))
 	if err != nil {
-		log.Printf("WARNING : Could not insert user in DB\n")
+		log.Printf("WARNING : Could not insert user '%s' in DB\n", username)
 		return "", err
 	}
 
@@ -223,7 +223,11 @@ func getUserFromAPIkey(db *sql.DB, APIkey string) (string, error) {
 		count += 1
 	}
 	
-	if count > 1 {
+	if count == 0 {
+		errorMsg := fmt.Sprintf("WARNING : No user associated with API key '%s'", APIkey)
+
+		return "", errors.New(errorMsg)
+	} else if count > 1 {
 		errorMsg := fmt.Sprintf("WARNING : Multiple user %v have the same API key '%s'", IDs, APIkey)
 		return IDs[0], errors.New(errorMsg)
 	}

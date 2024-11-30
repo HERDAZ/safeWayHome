@@ -7,9 +7,12 @@ import (
 	"log"
 	"fmt"
 	"time"	
+	"errors"
+	"slices"
 )
 
 var db *sql.DB
+var isHome []string
 
 func main() {
 
@@ -21,11 +24,15 @@ func main() {
 
 	router.GET("/position", getPosition)
 	router.GET("/home", getHomeposition)
-	router.GET("/login", login)
+	router.GET("/login", getLogin)
 
 	router.POST("/home", postHomeposition)	
 	router.POST("/position", postPosition)
-	router.POST("/signup", signup)
+	router.POST("/signup", postSignup)
+
+	router.POST("/amHome", postAmHome)
+	router.GET("/isHome", getIsHome)
+	//router.POST("/cleanIsHome", postCleanIsHome) //TODO delete for production
 
 	router.Run("87.106.79.94:8447")
 }
@@ -42,6 +49,7 @@ func postPosition(c *gin.Context) {
 	var newPosition PositionRequest
 
 	err := c.BindJSON(&newPosition)
+	log.Printf("postPosition with %v", newPosition)
 	
 	if err != nil {
 
@@ -67,37 +75,78 @@ func postPosition(c *gin.Context) {
 
 func getPosition(c *gin.Context) {
      
-	//TODO find why the fuck there is an error 500 that is not this one
 	apikey := c.GetHeader("apikey")
-	userID := c.GetHeader("userID")
+	friendID := c.GetHeader("friendID")
+	log.Printf("getPosition with apikey : %s, friendID : %s\n", apikey, friendID)
 
-        fmt.Println("API key :", apikey)
-        fmt.Println("userID :", userID)
+	if apikey == "" || friendID == "" {
+		errorMsg := makeErrMsg(errors.New("Empty apikey or friendID"))
+		c.IndentedJSON(http.StatusBadRequest, errorMsg)
+		return
+	}
 
-	positions, err := getUsersPosition(db, apikey, userID, false)
+	userID, err := getUserFromAPIkey(db, apikey)
+
+	if err != nil {
+		errorMsg := makeErrMsg(err)
+		log.Println(err)
+		c.IndentedJSON(http.StatusInternalServerError, errorMsg)
+		return 
+	}
+
+	perms, err := getPermissions(db, userID, friendID)
+
+	if perms.seePosition != true {
+
+		log.Printf("WARNING : Insuficient perm seePosition for userID '%s' and friendID '%s'\n", userID, friendID)
+		response := makeErrMsg(err)
+		log.Println(err)
+		c.IndentedJSON(http.StatusUnauthorized, response)
+		return
+	}
+
+	positions, err := getUsersPosition(db, friendID, false)
+
 	if err != nil {
 		log.Println("ERROR : Could not retrieve data from table : ", err)
 		response := makeErrMsg(err)
 		c.IndentedJSON(http.StatusInternalServerError, response)
+		return
 	} 
 
 	c.IndentedJSON(http.StatusCreated, positions[0])
-	
 
 }
 
 func getHomeposition(c *gin.Context) {
 
 	apikey := c.GetHeader("apikey")
-	userID := c.GetHeader("userID")
+	friendID := c.GetHeader("friendID")
+	log.Printf("getHomePosition with apikey : %s, friendID : %s\n", apikey, friendID)
 
-        fmt.Println("API key :", apikey)
-        fmt.Println("userID :", userID)
+	userID, err := getUserFromAPIkey(db, apikey)
 
-	homePosition, err := getUsersHome(db, apikey, userID)
+	if err != nil {
+		errorMsg := makeErrMsg(err)
+		log.Println(errorMsg)
+		c.IndentedJSON(http.StatusInternalServerError, errorMsg)
+		return 
+	}
+
+	perms, err := getPermissions(db, userID, friendID)
+
+	if perms.seePosition != true {
+
+		log.Printf("WARNING : Insuficient perms for userID '%s' and friendID '%s' : ", userID, friendID)
+		response := makeErrMsg(err)
+		c.IndentedJSON(http.StatusUnauthorized, response)
+		return
+	}
+
+	homePosition, err := getUsersHome(db, friendID)
 	if err != nil {
 
-		log.Printf("WARNING : Could not retrieve home position for API key '%s'\n", apikey)
+		log.Printf("WARNING : Could not retrieve home position for friendID '%s'\n", friendID)
 		response := makeErrMsg(err)
 		c.IndentedJSON(http.StatusCreated, response)
 		return
@@ -110,11 +159,14 @@ func postHomeposition(c *gin.Context) {
 	now := time.Now().Add(time.Hour).Format(time.DateTime)
 
 	var newHomePosition HomeRequest
+
         if err := c.BindJSON(&newHomePosition); err != nil {
+		//TODO redo
+		log.Println("Failed to parse home position")
                 c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Failed to parse home position"})
-                fmt.Println(err)
                 return
         }
+	log.Printf("postHomePosition with %v\n", newHomePosition)
 
 	userID, err := getUserFromAPIkey(db, newHomePosition.APIkey)
 	if err != nil {
@@ -136,16 +188,18 @@ func postHomeposition(c *gin.Context) {
 	
 }
 
-func signup(c *gin.Context) {
+func postSignup(c *gin.Context) {
 
 	var user UserSignup
 	c.BindJSON(&user)
+	log.Printf("postSignup with %v\n", user)
 	//TODO : add err catch for bind
 
 	err := validateNewUser(db, user.UserName, user.Email, user.PhoneNb)
 
 	if err != nil {
 		response := makeErrMsg(err)
+		log.Println(err)
 		c.IndentedJSON(http.StatusBadRequest, response)
 		return
 	}
@@ -154,6 +208,7 @@ func signup(c *gin.Context) {
 
 	if err != nil {
 		response := makeErrMsg(err)
+		log.Println(err)
 		c.IndentedJSON(http.StatusInternalServerError, response)
 		return
 	}
@@ -161,20 +216,73 @@ func signup(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, SignupResponse{ UserID: userID })
 }
 
-func login(c *gin.Context) {
+func getLogin(c *gin.Context) {
 
 	username := c.GetHeader("username")
 	password := c.GetHeader("password")
+	log.Printf("getLogin with username : %s, password : %s\n", username, password)
 
 	userKey, userID, err := authenticateUser(db, username, password)
 	
 	if err != nil {
+		log.Println(err)
 		response := makeErrMsg(err)
 		c.IndentedJSON(http.StatusUnauthorized, response)
 	} else {
-
+		log.Println(err)
 		response := LoginResponse{Apikey: userKey, Userid : userID}
 		c.IndentedJSON(http.StatusCreated, response)
 	}
 
+}
+
+//func postCleanIsHome(c *gin.Context) {
+//	isHome = []string{}
+//	fmt.Println("isHome reset : ", isHome)
+//}
+
+func getIsHome(c *gin.Context) {
+
+	apikey := c.GetHeader("apikey")
+	friendID := c.GetHeader("friendID")
+	log.Printf("getIsHome with apikey : '%s', friendID : '%s'\n", apikey, friendID)
+
+	userID, err := getUserFromAPIkey(db, apikey)
+
+	if err != nil {
+		errorMsg := makeErrMsg(err)
+		log.Println(err)
+		c.IndentedJSON(http.StatusInternalServerError, errorMsg)
+		return 
+	}
+
+	perms, err := getPermissions(db, userID, friendID)
+
+	if perms.sendMessage != true {
+
+		log.Printf("WARNING : Insuficient perm sendMessage for userID '%s' and friendID '%s'\n", userID, friendID)
+		c.IndentedJSON(http.StatusUnauthorized, "GTFO, Ur not supposed to be here")
+		return
+	}
+
+	if slices.Contains(isHome, friendID) { c.IndentedJSON(http.StatusOK, true) 
+	} else { c.IndentedJSON(http.StatusOK, false) }
+}
+
+func postAmHome(c *gin.Context) {
+
+	var apikey Apikey
+	err := c.BindJSON(&apikey)
+	log.Printf("postAmHome with apikey : '%s'\n", apikey)
+
+	if err != nil {
+		log.Println(err)
+		response := makeErrMsg(err)
+		c.IndentedJSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	userID, err := getUserFromAPIkey(db, apikey.Apikey)
+
+	isHome = append(isHome, userID)
 }

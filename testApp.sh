@@ -1,4 +1,5 @@
-APIKEY="zdolX5bnPDYS60bWnpZAbWcHEnyU6V5C"
+APIKEY="zdolX5bnPDYS60bWnpZAbWcHEnyU6V5C" # iaLB
+#APIKEY="ZQQeYb2FBt4RMf73LbafMsZJhpMrxP0T" # kGtH
 USERNAME="newUsername"
 PASSWORD="newPassword"
 PHONENB="23896712"
@@ -7,21 +8,20 @@ LATITUDE="10.234567"
 LONGITUDE="9.234567"
 HOMELATITUDE="10.234567"
 HOMELONGITUDE="9.234567"
-USERID="sVvX"
-FRIENDID="ABCD"
+FRIENDID="kGtH"
 
 case $1 in
 	getPosition)
 	printf "\r----------------------------------------\n \
-		\rTest for GET /position -H 'apikey': $APIKEY 'userID': $FRIENDID\n"
-	curl 87.106.79.94:8447/position -G -H "apikey: $APIKEY" -H "userID":"$FRIENDID"
+		\rTest for GET /position -H 'apikey': $APIKEY 'friendID': $FRIENDID\n"
+	curl 87.106.79.94:8447/position -G -H "apikey: $APIKEY" -H "friendID":"$FRIENDID"
 	printf "\n----------------------------------------\n"
 	;;
 
 	getHome)
 	printf "\r---------------------------------------\n \
-		\rTest for GET /home -H 'apikey':$APIKEY 'userID':$FRIENDID\n"
-	curl 87.106.79.94:8447/home -G -H "apikey: $APIKEY" -H "userID":"$FRIENDID"
+		\rTest for GET /home -H 'apikey':$APIKEY 'friendID':$FRIENDID\n"
+	curl 87.106.79.94:8447/home -G -H "apikey: $APIKEY" -H "friendID":"$FRIENDID"
 	printf "\n----------------------------------------\n"
 	;;
 
@@ -48,9 +48,32 @@ case $1 in
 
 	postSignup)
 	printf "\r---------------------------------------\n \
-		\rTest for POST /signup -d username':$USERNAME, 'phoneNb':$PHONENB, 'email':$EMAIL, 'password':$PASSWORD\n"
+		\rTest for POST /signup -d 'username':$USERNAME, 'phoneNb':$PHONENB, 'email':$EMAIL, 'password':$PASSWORD\n"
 	curl 87.106.79.94:8447/signup -d "{\"username\":\"$USERNAME\",\"phoneNb\":\"$PHONENB\",\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}"
 	echo 
+	printf "\n----------------------------------------\n"
+	;;
+
+	postAmHome)
+	printf "\r---------------------------------------\n \
+		\rTest for POST /amHome -d 'apikey':$APIKEY\n"
+	curl 87.106.79.94:8447/amHome -d "{\"apikey\":\"$APIKEY\"}"
+	echo 
+	printf "\n----------------------------------------\n"
+	;;
+
+	getIsHome)
+	printf "\r---------------------------------------\n \
+		\rTest for GET /isHome -H 'apikey':$APIKEY -H 'friendID':$FRIENDID\n"
+	curl 87.106.79.94:8447/isHome -G -H "apikey: $APIKEY" -H "friendID: $FRIENDID"
+	printf "\n----------------------------------------\n"
+	;;
+
+	postCleanIsHome)
+	printf "\r---------------------------------------\n \
+		\rTest for POST /cleanIsHome\n"
+	curl 87.106.79.94:8447/cleanIsHome -d {}
+	echo
 	printf "\n----------------------------------------\n"
 	;;
 
@@ -63,10 +86,12 @@ case $1 in
 	echo "Possible args :"
 	echo "postSignup"
 	echo "postHome"
+	echo "postPosition"
+	echo "postAmHome"
 	echo "getLogin"
 	echo "getHome"
-	echo "postPosition"
 	echo "getPosition"
+	echo "getIsHome"
 	exit 1
 	;;
 esac
