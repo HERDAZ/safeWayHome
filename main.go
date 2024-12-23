@@ -13,6 +13,7 @@ import (
 
 var db *sql.DB
 var isHome []string
+var inEmergency []string
 
 func main() {
 
@@ -32,7 +33,14 @@ func main() {
 
 	router.POST("/amHome", postAmHome)
 	router.GET("/isHome", getIsHome)
-	//router.POST("/cleanIsHome", postCleanIsHome) //TODO delete for production
+	router.POST("/cleanIsHome", postCleanIsHome) //TODO delete for production
+
+	router.POST("/inEmergency", postAmHome)
+	router.GET("/inEmergency", getIsHome)
+	router.POST("/cleanInEmergency", postCleanIsHome) //TODO delete for production
+
+	router.POST("/addFriend", postAddFriend)
+	router.GET("/getFriend", getFriendList)
 
 	router.Run("87.106.79.94:8447")
 }
@@ -40,6 +48,65 @@ func main() {
 func makeErrMsg(err error) Error {
 	response := Error{ErrorMsg : err.Error()}
 	return response
+}
+
+func getFriendList(c * gin.Context) {
+	apikey := c.GetHeader("apikey")
+	log.Printf("getFriendList with apikey : %s\n", apikey)
+
+	if apikey == "" {
+		log.Println("Empty apikey")
+		c.IndentedJSON(http.StatusBadRequest, "Empty apikey")
+		return
+	}
+
+	userID, err := getUserFromAPIkey(db, apikey)
+
+	if err != nil {
+		errorMsg := makeErrMsg(err)
+		log.Println(err)
+		c.IndentedJSON(http.StatusInternalServerError, errorMsg)
+		return 
+	}
+	
+	var relations []Relation
+	relations, err = getUsersRelations(db, userID)
+
+	if err != nil {
+		errorMsg := makeErrMsg(err)
+		log.Println(err)
+		c.IndentedJSON(http.StatusInternalServerError, errorMsg)
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, relations)
+}
+
+func postAddFriend(c * gin.Context) {
+
+	now := time.Now().Add(time.Hour).Format(time.DateTime)
+	
+	var friendRequest AddFriend
+
+	err := c.BindJSON(&friendRequest)
+
+	fmt.Println("postAddFriend with %v", friendRequest);
+
+	if err != nil {
+		log.Printf("ERROR : Couldn't bind friendRequest from JSON :", err);
+		response := makeErrMsg(err)
+		c.IndentedJSON(http.StatusBadRequest, response)
+		return
+	}
+
+	err = createFriendship(db, friendRequest.APIkey, friendRequest.FriendID, now, true, true)
+	if err != nil {
+		errorMsg := makeErrMsg(err)
+		c.IndentedJSON(http.StatusBadRequest, errorMsg)
+		return
+	}
+	c.IndentedJSON(http.StatusOK, "")
+
 }
 
 func postPosition(c *gin.Context) {
@@ -236,11 +303,6 @@ func getLogin(c *gin.Context) {
 
 }
 
-//func postCleanIsHome(c *gin.Context) {
-//	isHome = []string{}
-//	fmt.Println("isHome reset : ", isHome)
-//}
-
 func getIsHome(c *gin.Context) {
 
 	apikey := c.GetHeader("apikey")
@@ -284,5 +346,67 @@ func postAmHome(c *gin.Context) {
 
 	userID, err := getUserFromAPIkey(db, apikey.Apikey)
 
+	if err != nil {
+		
+	}
+
 	isHome = append(isHome, userID)
+	c.IndentedJSON(http.StatusNoContent, nil)
+}
+
+func postCleanIsHome(c *gin.Context) {
+	isHome = []string{}
+	fmt.Println("isHome reset : ", isHome)
+}
+
+func postInEmergency(c *gin.Context) {
+
+	var apikey Apikey
+	err := c.BindJSON(&apikey)
+	log.Printf("postInEmergency with apikey : '%s'\n", apikey)
+
+	if err != nil {
+		log.Println(err)
+		response := makeErrMsg(err)
+		c.IndentedJSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	userID, err := getUserFromAPIkey(db, apikey.Apikey)
+
+	inEmergency = append(inEmergency, userID)
+	c.IndentedJSON(http.StatusNoContent, nil)
+}
+
+func getInEmergency(c *gin.Context) {
+
+	apikey := c.GetHeader("apikey")
+	friendID := c.GetHeader("friendID")
+	log.Printf("getInEmergency with apikey : '%s', friendID : '%s'\n", apikey, friendID)
+
+	userID, err := getUserFromAPIkey(db, apikey)
+
+	if err != nil {
+		errorMsg := makeErrMsg(err)
+		log.Println(err)
+		c.IndentedJSON(http.StatusInternalServerError, errorMsg)
+		return 
+	}
+
+	perms, err := getPermissions(db, userID, friendID)
+
+	if perms.sendMessage != true {
+
+		log.Printf("WARNING : Insuficient perm sendMessage for userID '%s' and friendID '%s'\n", userID, friendID)
+		c.IndentedJSON(http.StatusUnauthorized, "GTFO, Ur not supposed to be here")
+		return
+	}
+
+	if slices.Contains(inEmergency, friendID) { c.IndentedJSON(http.StatusOK, true) 
+	} else { c.IndentedJSON(http.StatusOK, false) }
+}
+
+func postCleanInEmergency(c *gin.Context) {
+	inEmergency = []string{}
+	fmt.Println("inEmergency reset : ", inEmergency)
 }

@@ -37,8 +37,9 @@ type HomeDB struct {
  type Relation struct {
  	UserID 	    string `json:"userid"`
 	FriendID    string `json:"friendid"`
-	Permissions byte   `json:"permissions"`
 	AddDate     string `json:"addDate"`
+ 	SeePosition  bool `json:"seeposition"`
+	SendMessage  bool `json:"sendmessage"`
 }
 
 type User struct {
@@ -68,7 +69,7 @@ type UserSignup struct {
 
 type SignupResponse struct {
 	UserID	     string `json:"userid"`
-	//TODO add APIkey maybe
+	//TODO check whatever the fuck i did here
 }
 
  type UserAlerts struct {
@@ -95,3 +96,9 @@ type SignupResponse struct {
  type Error struct {
  	ErrorMsg    string `json:"error"`
  }
+
+ type AddFriend struct {
+	APIkey	     string  `json:"apikey"`
+ 	FriendID     string  `json:"friendid"`
+ }
+

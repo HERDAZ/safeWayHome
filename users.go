@@ -235,3 +235,139 @@ func getUserFromAPIkey(db *sql.DB, APIkey string) (string, error) {
 	return userID, nil
 }
 
+func checkIfUserExist(db *sql.DB, userID string) (bool, error) {
+
+	query := fmt.Sprintf("SELECT COUNT(*) FROM users WHERE userID = '%s';", userID)
+
+	var count int8
+	row := db.QueryRow(query)
+	err := row.Scan(&count)
+
+	if err != nil {
+		errorMsg := fmt.Sprintf("ERROR : Couldn't read count for userID = '%s' : %s", userID, err)
+		return false, errors.New(errorMsg)
+	}
+
+	if count == 0 {
+		return false, nil
+	} else if count > 1 {
+		return true, nil //TODO find a way to have warnings
+	} else {
+		return true, nil
+	}
+}
+
+func validateNewFriendship(db *sql.DB, userID string, friendID string) (bool, error) {
+	
+	query := fmt.Sprintf("SELECT COUNT(*) FROM relations WHERE userID = '%s' AND friendID = '%s';", userID, friendID)
+
+	var count int8
+	row := db.QueryRow(query)
+	err := row.Scan(&count)
+
+	if err != nil {
+		errorMsg := fmt.Sprintf("ERROR : Couldn't read count for userID = '%s' and friendID = '%s' : %s", userID, friendID, err)
+		return false, errors.New(errorMsg)
+	}
+
+	if count == 0 {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func createFriendship(db *sql.DB, apikey string, friendID string, addDate string, seePosition bool, sendMessage bool) error {
+
+	userID, err := getUserFromAPIkey(db, apikey)
+	if err != nil {
+		errorMsg := fmt.Sprintf("ERROR : Coulndn't associate API key with userID : %s", err)
+		return errors.New(errorMsg)
+	}
+
+	userExist, err := checkIfUserExist(db, friendID)
+	if err != nil {
+		errorMsg := fmt.Sprintf("ERROR : Couldn't validate the existence for userID = '%s' : %s", friendID, err)
+		return errors.New(errorMsg)
+	}
+	if !userExist {
+		errorMsg := fmt.Sprintf("ERROR : User '%s' doesn't exist", friendID)
+		return errors.New(errorMsg)
+	}
+
+	newFriendship, err := validateNewFriendship(db, userID, friendID) 
+	if err != nil {
+		errorMsg := fmt.Sprintf("ERROR : Couldn't validate the uniqueness of the friendship userID = '%s' friendID = '%s' : %s", userID, friendID, err)
+		return errors.New(errorMsg)
+	}
+	if !newFriendship {
+		errorMsg := fmt.Sprintf("ERROR : Friendship userID '%s' and friendID '%s' already exist", userID, friendID)
+		return errors.New(errorMsg)
+	}
+	
+
+	var query string
+
+	query = "INSERT INTO relations (userID, friendID, addDate, seePosition, sendMessage) VALUES "
+
+	//i want it known that i hate this fucking convertion from bool to int, but go doesn't fucking implement a printf arg from bool to 0 or 1, so here we are.
+	_seePosition := 0 
+	if seePosition {
+		_seePosition = 1
+	}
+	_sendMessage := 0
+	if seePosition {
+		_sendMessage = 1
+	}
+
+	query += fmt.Sprintf("('%s', '%s', '%s', 0b%b, 0b%b);", userID, friendID, addDate, _seePosition, _sendMessage)
+
+	fmt.Println(query)
+	_, err = db.Exec(query)
+	if err != nil { 
+		errorMsg := fmt.Sprintf("ERROR : Error adding relations with userID '%s' and friendID '%s' : %s", userID, friendID, err)
+		return errors.New(errorMsg)
+	}
+
+	return nil
+}
+
+func getUsersRelations(db *sql.DB, userID string) ([]Relation, error) {
+	
+	query := fmt.Sprintf("SELECT userID, friendID, seePosition, sendMessage, addDate FROM relations WHERE userID = '%s';", userID)
+	//query := fmt.Sprintf("SELECT userID, friendid, addDate, seePosition, sendMessage FROM relations WHERE userID = '%s';", userID)
+
+
+	rows, err := db.Query(query)
+	if err != nil {
+		errorMsg := fmt.Sprintf("ERROR : Couldn't parse rows from relations where userID = '%s' : %v", err)
+		return nil, errors.New(errorMsg)
+	}
+
+	var _userID	string
+	var friendid 	string
+	var addDate 	string 
+ 	var seePosition []byte
+	var sendMessage []byte
+
+	var relations []Relation
+
+	count := 0
+
+	columns, err := rows.Columns()
+	fmt.Println(columns, err)
+
+	for rows.Next() {
+		rows.Scan(&_userID, &friendid, &seePosition, &sendMessage, &addDate)
+		//rows.Scan(&_userID, &friendid, &addDate, &seePosition, &sendMessage,)
+
+		relations = append(relations, Relation { UserID : _userID, FriendID : friendid, AddDate : addDate, SeePosition : (seePosition[0] == 0x1), SendMessage : (sendMessage[0] == 0x1) } )
+		count += 1
+	}
+
+	if count == 0 {
+		log.Printf("WARNING : User '%s' has no friends", userID)
+	}
+
+	return relations, nil
+}
