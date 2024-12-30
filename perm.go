@@ -45,7 +45,7 @@ func validateNewRelation(db *sql.DB, userID string, friendID string) error {
 	err := row.Scan(&count)
 
 	if err == sql.ErrNoRows {
-		errorMsg := fmt.Sprintf("ERROR : Couldn't validate new relation for users '%s' and '%s : %v", userID, friendID, err)
+		errorMsg := fmt.Sprintf("ERROR : Couldn't validate new relation for users '%s' and '%s : ErrNoRows", userID, friendID, err)
 		return errors.New(errorMsg)
 	}
 	

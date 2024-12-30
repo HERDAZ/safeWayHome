@@ -21,6 +21,11 @@ type PositionDB struct {
         Longitude  float64 `json:"longitude"`
 }
 
+type Position struct {
+        Latitude   float64 `json:"latitude"`
+        Longitude  float64 `json:"longitude"`
+}
+
 type HomeRequest struct {
  	APIkey 	    string  `json:"apikey"`
  	Latitude    float64 `json:"latitude"`
@@ -35,11 +40,12 @@ type HomeDB struct {
 }
 
  type Relation struct {
- 	UserID 	    string `json:"userid"`
-	FriendID    string `json:"friendid"`
-	AddDate     string `json:"addDate"`
- 	SeePosition  bool `json:"seeposition"`
-	SendMessage  bool `json:"sendmessage"`
+ 	UserID 	    	string `json:"userid"`
+	FriendID    	string `json:"friendid"`
+	FriendUsername 	string `json:"friendusername"`
+	AddDate     	string `json:"addDate"`
+ 	SeePosition  	bool `json:"seeposition"`
+	SendMessage  	bool `json:"sendmessage"`
 }
 
 type User struct {

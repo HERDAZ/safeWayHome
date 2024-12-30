@@ -335,8 +335,6 @@ func createFriendship(db *sql.DB, apikey string, friendID string, addDate string
 func getUsersRelations(db *sql.DB, userID string) ([]Relation, error) {
 	
 	query := fmt.Sprintf("SELECT userID, friendID, seePosition, sendMessage, addDate FROM relations WHERE userID = '%s';", userID)
-	//query := fmt.Sprintf("SELECT userID, friendid, addDate, seePosition, sendMessage FROM relations WHERE userID = '%s';", userID)
-
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -354,19 +352,36 @@ func getUsersRelations(db *sql.DB, userID string) ([]Relation, error) {
 
 	count := 0
 
-	columns, err := rows.Columns()
-	fmt.Println(columns, err)
+	_, err = rows.Columns()
 
 	for rows.Next() {
 		rows.Scan(&_userID, &friendid, &seePosition, &sendMessage, &addDate)
-		//rows.Scan(&_userID, &friendid, &addDate, &seePosition, &sendMessage,)
 
 		relations = append(relations, Relation { UserID : _userID, FriendID : friendid, AddDate : addDate, SeePosition : (seePosition[0] == 0x1), SendMessage : (sendMessage[0] == 0x1) } )
 		count += 1
 	}
 
+	var friendUsername string
+
+	for i, _ := range relations {
+		//todo : from friendID 
+		//get friendUsername,
+		//then put it in relation
+
+		query = fmt.Sprintf("SELECT username FROM users WHERE userID = '%s';", relations[i].FriendID)
+		row := db.QueryRow(query);
+
+		err = row.Scan(&friendUsername)
+		fmt.Println("friendUsername :", friendUsername)
+
+		if err == sql.ErrNoRows {
+			log.Printf("WARNING : No username attached to userID '%s', despite a relation with userID '%s'\n", relations[i].FriendID, relations[i].UserID)
+		}
+		relations[i].FriendUsername = friendUsername
+	}
+
 	if count == 0 {
-		log.Printf("WARNING : User '%s' has no friends", userID)
+		log.Printf("WARNING : User '%s' has no friends :(", userID)
 	}
 
 	return relations, nil
