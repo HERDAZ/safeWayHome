@@ -1,7 +1,7 @@
 #TODO avoid code repetition
 
 APIKEY="Z2BDRpDhXBcEux6GqA7sRKuF7F9sRIWA" # iaLB
-FRIENDAPIKEY="ZQQeYb2FBt4RMf73LbafMsZJhpMrxP0T" # kGtH
+FRIENDAPIKEY="F7riyLxng0mHlnbSIGfnnlG3l3jKHi2f" # kGtH
 BADAPIKEY="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 USERNAME="newUsername"
 PASSWORD="newPassword"
@@ -60,6 +60,18 @@ case $1 in
 	printf "\n----------------------------------------\n"
 	;;
 
+	testIsFriendHome)
+	printf "\r---------------------------------------\n \
+		\rTest for POST /position -d 'apikey':$FRIENDAPIKEY, 'latitude':$LATITUDE, 'longitude':$LONGITUDE, isHome:true\n"
+		curl 87.106.79.94:8447/position -d '{"apikey":"'$FRIENDAPIKEY'","latitude":'$LATITUDE',"longitude":'$LONGITUDE', "isHome":true}'
+	printf "\n----------------------------------------\n"
+	printf "\r---------------------------------------\n \
+		\rTest for GET /getFriend -H 'apikey':$APIKEY\n"
+		curl 87.106.79.94:8447/getFriend -G -H "apikey: $APIKEY"
+	echo
+	printf "\n---------------------------------------------\n"
+	;;
+
 	postSignup)
 	printf "\r---------------------------------------\n \
 		\rTest for POST /signup -d 'username':$USERNAME, 'phoneNb':$PHONENB, 'email':$EMAIL, 'password':$PASSWORD\n"
@@ -68,16 +80,18 @@ case $1 in
 	printf "\n----------------------------------------\n"
 	;;
 
-	postAmHome)
+	postAmHomeOld)
 	printf "\r---------------------------------------\n \
+		\rDEPRECATED\n \
 		\rTest for POST /amHome -d 'apikey':$FRIENDAPIKEY\n"
-	curl 87.106.79.94:8447/amHome -d "{\"apikey\":\"$FRIENDAPIKEY\"}"
+		curl 87.106.79.94:8447/amHome -d "{\"apikey\":\"$FRIENDAPIKEY\"}"
 	echo 
 	printf "\n----------------------------------------\n"
 	;;
 
-	getIsHome)
+	getIsHomeOld)
 	printf "\r---------------------------------------\n \
+		\rDEPRECATED\n \
 		\rTest for GET /isHome -H 'apikey':$APIKEY -H 'friendID':$FRIENDID\n"
 	curl 87.106.79.94:8447/isHome -G -H "apikey: $APIKEY" -H "friendID: $FRIENDID"
 	printf "\n----------------------------------------\n"
@@ -213,6 +227,7 @@ case $1 in
 	echo "postCleanInEmergency"
 	echo "---------------------"
 	echo "fuzzBadAPIkey"
+	echo "testIsFriendHome"
 	exit 1
 	;;
 esac

@@ -32,12 +32,12 @@ func main() {
 	router.POST("/position", postPosition)
 	router.POST("/signup", postSignup)
 
-	router.POST("/amHome", postAmHome)
-	router.GET("/isHome", getIsHome)
+	// router.POST("/amHome", postAmHome) DEPRECATED, NOW IN POST /position
+	//router.GET("/isHome", getIsHome) DEPRECATED, NOW HANDLED BY GET /getFriend
 	router.POST("/cleanIsHome", postCleanIsHome) //TODO delete for production
 
-	router.POST("/inEmergency", postAmHome)
-	router.GET("/inEmergency", getIsHome)
+	router.POST("/inEmergency", postInEmergency)
+	router.GET("/inEmergency", getInEmergency)
 	router.POST("/cleanInEmergency", postCleanIsHome) //TODO delete for production
 
 	router.GET("/isStoped", getIsStoped)
@@ -54,7 +54,7 @@ func makeErrMsg(err error) Error {
 	return response
 }
 
-func deleteElement(elem string, slice []string) []string { //should create a util class at this point
+func deleteElement(slice []string, elem string) []string { //should create a util class at this point
 	for i:=0; i<len(slice);i++ {
 		if slice[i] == elem {
 			slice[i] = slice[len(slice)-1]
@@ -65,8 +65,9 @@ func deleteElement(elem string, slice []string) []string { //should create a uti
 }
 
 func getFriendList(c * gin.Context) {
+
 	apikey := c.GetHeader("apikey")
-	log.Printf("getFriendList with apikey : %s\n", apikey)
+	log.Printf("INFO : getFriendList with apikey : %s\n", apikey)
 
 	if apikey == "" {
 		log.Println("Empty apikey")
@@ -140,6 +141,7 @@ func postPosition(c *gin.Context) {
 		return
 	}
 
+
 	
 	userID, err := getUserFromAPIkey(db, newPosition.APIkey)
 
@@ -150,7 +152,13 @@ func postPosition(c *gin.Context) {
 		return
 	}
 
-	delta := 0.00005 // yes i know, no magic numbers, but for now idgas (it's the minimum step, if 2 latitude or longitude are within, they are considered the same
+	if newPosition.IsHome && !slices.Contains(isHome, userID) {
+		isHome = append(isHome, userID)
+	} else if !newPosition.IsHome && slices.Contains(isHome, userID) {
+		isHome = deleteElement(isHome, userID)
+	}
+
+	delta := 0.00002 // yes i know, no magic numbers, but for now idgas (it's the minimum step, if 2 latitude or longitude are within, they are considered the same)
 	if !slices.Contains(isStoped, userID) {
 
 		//check if user is at the same place as 2 minutes ago (and not already in isStoped
@@ -165,7 +173,7 @@ func postPosition(c *gin.Context) {
 		query += fmt.Sprintf("longitude BETWEEN %.7f AND %.7f ", newPosition.Longitude-delta, newPosition.Longitude+delta)
 		query +=             "LIMIT 1;"
 
-		fmt.Println("INFO : SQL query :", query)
+		//fmt.Println("INFO : SQL query :", query)
 		fmt.Println("INFO : Time :", now)
 
 		row := db.QueryRow(query)
@@ -205,7 +213,7 @@ func postPosition(c *gin.Context) {
 
 		if !( (-delta < latDiff && latDiff > delta) && (-delta < lonDiff && lonDiff > delta) ) { //if not still in the same place
 			fmt.Printf("ALERT : UserID '%s' is moving again\n", userID)
-			isStoped = deleteElement(userID, isStoped)
+			isStoped = deleteElement(isStoped, userID)
 		}
 	}
 
@@ -226,7 +234,7 @@ func getPosition(c *gin.Context) {
      
 	apikey := c.GetHeader("apikey")
 	friendID := c.GetHeader("friendID")
-	log.Printf("GET : getPosition with apikey : %s, friendID : %s\n", apikey, friendID)
+	log.Printf("INFO : getPosition with apikey : %s, friendID : %s\n", apikey, friendID)
 
 	if apikey == "" || friendID == "" {
 		errorMsg := makeErrMsg(errors.New("Empty apikey or friendID"))
@@ -271,7 +279,7 @@ func getHomeposition(c *gin.Context) {
 
 	apikey := c.GetHeader("apikey")
 	friendID := c.GetHeader("friendID")
-	log.Printf("GET : getHomePosition with apikey : %s, friendID : %s\n", apikey, friendID)
+	log.Printf("INFO : getHomePosition with apikey : %s, friendID : %s\n", apikey, friendID)
 
 	userID, err := getUserFromAPIkey(db, apikey)
 
@@ -319,7 +327,7 @@ func postHomeposition(c *gin.Context) {
                 c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Failed to parse home position"})
                 return
         }
-	log.Printf("POST : postHomePosition with %v\n", newHomePosition)
+	log.Printf("INFO : postHomePosition with %v\n", newHomePosition)
 
 	userID, err := getUserFromAPIkey(db, newHomePosition.APIkey)
 	if err != nil {
@@ -345,7 +353,7 @@ func postSignup(c *gin.Context) {
 
 	var user UserSignup
 	c.BindJSON(&user)
-	log.Printf("POST : postSignup with %v\n", user)
+	log.Printf("INFO : postSignup with %v\n", user)
 	//TODO : add err catch for bind
 
 	err := validateNewUser(db, user.UserName, user.Email, user.PhoneNb)
@@ -373,7 +381,7 @@ func getLogin(c *gin.Context) {
 
 	username := c.GetHeader("username")
 	password := c.GetHeader("password")
-	log.Printf("GET : getLogin with username : %s, password : %s\n", username, password)
+	log.Printf("INFO : getLogin with username : %s, password : %s\n", username, password)
 
 	userKey, userID, err := authenticateUser(db, username, password)
 	
@@ -393,7 +401,7 @@ func getIsHome(c *gin.Context) {
 
 	apikey := c.GetHeader("apikey")
 	friendID := c.GetHeader("friendID")
-	log.Printf("GET : getIsHome with apikey : '%s', friendID : '%s'\n", apikey, friendID)
+	log.Printf("INFO : getIsHome with apikey : '%s', friendID : '%s'\n", apikey, friendID)
 
 	userID, err := getUserFromAPIkey(db, apikey)
 
@@ -417,28 +425,6 @@ func getIsHome(c *gin.Context) {
 	} else { c.IndentedJSON(http.StatusOK, false) }
 }
 
-func postAmHome(c *gin.Context) {
-
-	var apikey Apikey
-	err := c.BindJSON(&apikey)
-	log.Printf("POST : postAmHome with apikey : '%s'\n", apikey)
-
-	if err != nil {
-		log.Println(err)
-		response := makeErrMsg(err)
-		c.IndentedJSON(http.StatusInternalServerError, response)
-		return
-	}
-
-	userID, err := getUserFromAPIkey(db, apikey.Apikey)
-
-	if err != nil {
-		//TODO
-	}
-
-	isHome = append(isHome, userID)
-	c.IndentedJSON(http.StatusNoContent, nil)
-}
 
 func postCleanIsHome(c *gin.Context) {
 	isHome = []string{}
@@ -449,7 +435,7 @@ func postInEmergency(c *gin.Context) {
 
 	var apikey Apikey
 	err := c.BindJSON(&apikey)
-	log.Printf("POST : postInEmergency with apikey : '%s'\n", apikey)
+	log.Printf("INFO : postInEmergency with apikey : '%s'\n", apikey)
 
 	if err != nil {
 		log.Println(err)
@@ -460,6 +446,13 @@ func postInEmergency(c *gin.Context) {
 
 	userID, err := getUserFromAPIkey(db, apikey.Apikey)
 
+	if err != nil {
+		errorMsg := makeErrMsg(err)
+		log.Println(err)
+		c.IndentedJSON(http.StatusInternalServerError, errorMsg)
+		return 
+	}
+
 	inEmergency = append(inEmergency, userID)
 	c.IndentedJSON(http.StatusNoContent, nil)
 }
@@ -468,7 +461,7 @@ func getInEmergency(c *gin.Context) {
 
 	apikey := c.GetHeader("apikey")
 	friendID := c.GetHeader("friendID")
-	log.Printf("GET : getInEmergency with apikey : '%s', friendID : '%s'\n", apikey, friendID)
+	log.Printf("INFO : getInEmergency with apikey : '%s', friendID : '%s'\n", apikey, friendID)
 
 	userID, err := getUserFromAPIkey(db, apikey)
 
@@ -501,7 +494,7 @@ func getIsStoped(c *gin.Context) {
 
 	apikey := c.GetHeader("apikey")
 	friendID := c.GetHeader("friendID")
-	log.Printf("GET : getIsStoped with apikey : '%s', friendID : '%s'\n", apikey, friendID)
+	log.Printf("INFO : getIsStoped with apikey : '%s', friendID : '%s'\n", apikey, friendID)
 
 	userID, err := getUserFromAPIkey(db, apikey)
 

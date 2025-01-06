@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/big"
 	"errors"
+	"slices"
 )
 
 func pushUserToDB(db *sql.DB, userID string, lastLogin string, username string, email string, phoneNb string, passwdHash string) error {
@@ -347,6 +348,7 @@ func getUsersRelations(db *sql.DB, userID string) ([]Relation, error) {
 	var addDate 	string 
  	var seePosition []byte
 	var sendMessage []byte
+	var bIsHome	bool
 
 	var relations []Relation
 
@@ -357,22 +359,21 @@ func getUsersRelations(db *sql.DB, userID string) ([]Relation, error) {
 	for rows.Next() {
 		rows.Scan(&_userID, &friendid, &seePosition, &sendMessage, &addDate)
 
-		relations = append(relations, Relation { UserID : _userID, FriendID : friendid, AddDate : addDate, SeePosition : (seePosition[0] == 0x1), SendMessage : (sendMessage[0] == 0x1) } )
+		bIsHome = slices.Contains(isHome, friendid)
+		fmt.Printf("DEBUG : bIsHome : %v, isHome : %v, friendID : %s\n", bIsHome, isHome, friendid)
+
+		relations = append(relations, Relation { UserID : _userID, FriendID : friendid, AddDate : addDate, SeePosition : (seePosition[0] == 0x1), SendMessage : (sendMessage[0] == 0x1), IsHome : bIsHome } )
 		count += 1
 	}
 
 	var friendUsername string
 
 	for i, _ := range relations {
-		//todo : from friendID 
-		//get friendUsername,
-		//then put it in relation
 
 		query = fmt.Sprintf("SELECT username FROM users WHERE userID = '%s';", relations[i].FriendID)
 		row := db.QueryRow(query);
 
 		err = row.Scan(&friendUsername)
-		fmt.Println("friendUsername :", friendUsername)
 
 		if err == sql.ErrNoRows {
 			log.Printf("WARNING : No username attached to userID '%s', despite a relation with userID '%s'\n", relations[i].FriendID, relations[i].UserID)
@@ -385,4 +386,17 @@ func getUsersRelations(db *sql.DB, userID string) ([]Relation, error) {
 	}
 
 	return relations, nil
+}
+
+func AmHome(apikey string) error {
+
+	userID, err := getUserFromAPIkey(db, apikey)
+
+	if err != nil {
+		errorMsg := fmt.Sprintf("ERROR : Couldn't get userID from APIkey '%s' : %v\n", apikey, err)
+		return errors.New(errorMsg)
+	}
+
+	isHome = append(isHome, userID)
+	return nil
 }

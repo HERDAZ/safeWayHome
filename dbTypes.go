@@ -12,6 +12,7 @@ type PositionRequest struct {
         APIkey     string  `json:"apikey"`
         Latitude   float64 `json:"latitude"`
         Longitude  float64 `json:"longitude"`
+	IsHome	   bool    `json:"ishome"`
 }
 
 type PositionDB struct {
@@ -46,6 +47,7 @@ type HomeDB struct {
 	AddDate     	string `json:"addDate"`
  	SeePosition  	bool `json:"seeposition"`
 	SendMessage  	bool `json:"sendmessage"`
+	IsHome		bool `json:"ishome"`
 }
 
 type User struct {
