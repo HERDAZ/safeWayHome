@@ -1,5 +1,5 @@
 # Safe Way Home
-A geolocalisation app to make sure you get home safe.
+This is the backend for a geolocalisation app to make sure you get home safe.
 
 ## Install
 
