@@ -199,7 +199,7 @@ func updateAPIkey(db *sql.DB, userID string, APIkey string) error {
 		return errors.New(errorMsg)
 	}
 
-	fmt.Println("Updated API key for userID", userID)
+	log.Println("Updated API key for userID", userID)
 
 	return nil
 }
@@ -323,7 +323,6 @@ func createFriendship(db *sql.DB, apikey string, friendID string, addDate string
 
 	query += fmt.Sprintf("('%s', '%s', '%s', 0b%b, 0b%b);", userID, friendID, addDate, _seePosition, _sendMessage)
 
-	fmt.Println(query)
 	_, err = db.Exec(query)
 	if err != nil { 
 		errorMsg := fmt.Sprintf("ERROR : Error adding relations with userID '%s' and friendID '%s' : %s", userID, friendID, err)
@@ -360,7 +359,7 @@ func getUsersRelations(db *sql.DB, userID string) ([]Relation, error) {
 		rows.Scan(&_userID, &friendid, &seePosition, &sendMessage, &addDate)
 
 		bIsHome = slices.Contains(isHome, friendid)
-		fmt.Printf("DEBUG : bIsHome : %v, isHome : %v, friendID : %s\n", bIsHome, isHome, friendid)
+		log.Printf("DEBUG : bIsHome : %v, isHome : %v, friendID : %s\n", bIsHome, isHome, friendid)
 
 		relations = append(relations, Relation { UserID : _userID, FriendID : friendid, AddDate : addDate, SeePosition : (seePosition[0] == 0x1), SendMessage : (sendMessage[0] == 0x1), IsHome : bIsHome } )
 		count += 1

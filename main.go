@@ -105,7 +105,7 @@ func postAddFriend(c * gin.Context) {
 
 	err := c.BindJSON(&friendRequest)
 
-	fmt.Println("postAddFriend with %v", friendRequest);
+	log.Println("postAddFriend with ", friendRequest);
 
 	if err != nil {
 		log.Printf("ERROR : Couldn't bind friendRequest from JSON :", err);
@@ -147,7 +147,7 @@ func postPosition(c *gin.Context) {
 
 	if err != nil {
 		errorMsg := makeErrMsg(err)
-		fmt.Printf("ERROR : Can't get userID of apikey '%s' : %v", newPosition.APIkey, err)
+		log.Println("ERROR : Can't get userID of apikey '", newPosition.APIkey, "' :", err)
 		c.IndentedJSON(http.StatusInternalServerError, errorMsg)
 		return
 	}
@@ -161,7 +161,7 @@ func postPosition(c *gin.Context) {
 	delta := 0.00002 // yes i know, no magic numbers, but for now idgas (it's the minimum step, if 2 latitude or longitude are within, they are considered the same)
 	if !slices.Contains(isStoped, userID) {
 
-		//check if user is at the same place as 2 minutes ago (and not already in isStoped
+		//check if user is at the same place as 2 minutes ago (and not already in isStoped)
 		timeMinus := time.Now().Add(time.Hour-2*time.Minute-15*time.Second).Format(time.DateTime)
 		timePlus  := time.Now().Add(time.Hour-2*time.Minute+15*time.Second).Format(time.DateTime)
 
@@ -173,7 +173,7 @@ func postPosition(c *gin.Context) {
 		query += fmt.Sprintf("longitude BETWEEN %.7f AND %.7f ", newPosition.Longitude-delta, newPosition.Longitude+delta)
 		query +=             "LIMIT 1;"
 
-		//fmt.Println("INFO : SQL query :", query)
+		fmt.Println("INFO : SQL query :", query)
 		fmt.Println("INFO : Time :", now)
 
 		row := db.QueryRow(query)
@@ -389,10 +389,12 @@ func getLogin(c *gin.Context) {
 		log.Println(err)
 		response := makeErrMsg(err)
 		c.IndentedJSON(http.StatusUnauthorized, response)
+		return
 	} else {
 		log.Println(err)
 		response := LoginResponse{Apikey: userKey, Userid : userID}
 		c.IndentedJSON(http.StatusCreated, response)
+		return
 	}
 
 }
