@@ -1,9 +1,9 @@
 # Safe Way Home
 A geolocalisation app to make sure you get home safe.
 
-## Basic Install
+## Install
 
-Go version ```go 1.23.2 linux/amd64``` is the one used on the server
+Go version ```go 1.23.2 linux/amd64``` is the one used on the server.
 The libraries used are :
 
  - net/http
