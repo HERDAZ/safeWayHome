@@ -37,4 +37,4 @@ $./testApp.sh <test>
 
 ## Warnings
 
-During developement, it was noticed that when using the app while connected to a restricive network would refrain you from connecting to the server. U can use roaming data to resolve the problem, or change the server port to something more common (80, 22, 666 (DOOM multiplayer), ... ). Just be aware that this change should also be made in the app.
+During developement, it was noticed that when using the app while connected to a restricive network would refrain you from connecting to the server. U can use roaming data to resolve the problem, or change the server port to something more common (80, 22, 666 (DOOM multiplayer), ... ). Just be aware that this change should also be made in the app. If need be, ask the dev team to open the server for you.
