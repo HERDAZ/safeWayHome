@@ -158,12 +158,12 @@ func postPosition(c *gin.Context) {
 		isHome = deleteElement(isHome, userID)
 	}
 
-	delta := 0.00002 // yes i know, no magic numbers, but for now idgas (it's the minimum step, if 2 latitude or longitude are within, they are considered the same)
+	delta := 0.00002 //the minimum step, if 2 latitude or longitude are within, they are considered the same
 	if !slices.Contains(isStoped, userID) {
 
 		//check if user is at the same place as 2 minutes ago (and not already in isStoped)
-		timeMinus := time.Now().Add(time.Hour-2*time.Minute-15*time.Second).Format(time.DateTime)
-		timePlus  := time.Now().Add(time.Hour-2*time.Minute+15*time.Second).Format(time.DateTime)
+		timeMinus := time.Now().Add(time.Hour-30*time.Second-15*time.Second).Format(time.DateTime)
+		timePlus  := time.Now().Add(time.Hour-30*time.Second+15*time.Second).Format(time.DateTime)
 
 		// TODO maybe refactor with COUNT(*)
 		query := 	     "SELECT latitude, longitude FROM coords WHERE "
@@ -200,18 +200,19 @@ func postPosition(c *gin.Context) {
 
 		var lastPosition Position
 		row := db.QueryRow(query)
-		err := row.Scan(&lastPosition)
+		err := row.Scan(&lastPosition.Latitude, &lastPosition.Longitude)
 
 		if err != nil {
 			errorMsg := makeErrMsg(err)
 			fmt.Printf("ERROR : Couldn't scan into Position : %s\n", err)
 			c.IndentedJSON(http.StatusInternalServerError, errorMsg)
+			return
 		}
 
 		latDiff := lastPosition.Latitude - newPosition.Latitude
 		lonDiff := lastPosition.Longitude - newPosition.Longitude
 
-		if !( (-delta < latDiff && latDiff > delta) && (-delta < lonDiff && lonDiff > delta) ) { //if not still in the same place
+		if !( (-delta < latDiff || latDiff > delta) && (-delta < lonDiff || lonDiff > delta) ) { //if not still in the same place
 			fmt.Printf("ALERT : UserID '%s' is moving again\n", userID)
 			isStoped = deleteElement(isStoped, userID)
 		}

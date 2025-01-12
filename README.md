@@ -3,7 +3,7 @@ A geolocalisation app to make sure you get home safe.
 
 ## Basic Install
 
-Go version go1.23.2 linux/amd64 is the one used on the server
+Go version ```go 1.23.2 linux/amd64``` is the one used on the server
 The libraries used are :
 
  - net/http
@@ -18,8 +18,8 @@ The libraries used are :
  - time
  - log
 
-It will also need a database, the one used in the server is a mysql version 8.0.40-0ubuntu0.22.04.1
-You can use the template in dbTemplate.sql to generate the db with the goos structure. Make sure to create an account that can read/write to the db to be used by go, put it's credential in dbConnectTemplate.go, and rename dbConnectTemplate.go to dbConnect.go.
+It will also need a database, the one used in the server is a mysql database version ```8.0.40-0ubuntu0.22.04.1```.
+You can use the template in dbTemplate.sql to generate the db with the good structure. Make sure to create an account that can read/write to the db to be used by go, put it's credential in dbConnectTemplate.go, and rename dbConnectTemplate.go to dbConnect.go.
 
 ## Launching the server
 
@@ -28,7 +28,7 @@ A shell script is used to launch the server. It contains 2 lines, changing wich 
 $./runApp.sh
 ```
 
-## Testing the app
+## Testing the server
 
 A shell script is used to test the API, and is just a collection of curl with parameters (use ./testApp.sh to see all options)
 ```
